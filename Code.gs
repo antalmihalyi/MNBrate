@@ -46,7 +46,7 @@
     const days = XmlService.parse(inner).getRootElement().getChildren('Day');
     if (!days.length) throw new Error('No data found');
 
-    const day  = date ? days[days.length - 1] : days[0];
+    const day  = days[0];  //the list is in reverse order
     const rate = day.getChildren('Rate')
       .find(r => r.getAttribute('curr').getValue() === curr);
     if (!rate) throw new Error('Currency not found: ' + curr);
