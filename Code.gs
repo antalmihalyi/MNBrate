@@ -1,52 +1,60 @@
-function getMNBRate(currency, date) {
-  const curr      = currency.toUpperCase();
-  const operation = date ? 'GetExchangeRates' : 'GetCurrentExchangeRates';
+  function getMNBRate(currency, date) {
+    const curr      = currency.toUpperCase();
+    const operation = date ? 'GetExchangeRates' : 'GetCurrentExchangeRates';
 
-  const body = date
-    ? `<GetExchangeRates xmlns="http://www.mnb.hu/webservices/">
-         <startDate>${toDateStr(date)}</startDate>
-         <endDate>${toDateStr(date)}</endDate>
-         <currencyNames>${curr}</currencyNames>
-       </GetExchangeRates>`
-    : `<GetCurrentExchangeRates xmlns="http://www.mnb.hu/webservices/" />`;
+    let body;
+    if (date) {
+      const end   = date instanceof Date ? date : new Date(date);
+      const start = new Date(end);
+      start.setDate(start.getDate() - 7);
 
-  const soap = `<?xml version="1.0" encoding="utf-8"?>
-<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-               xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-               xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
-  <soap:Body>${body}</soap:Body>
-</soap:Envelope>`;
+      body = `<GetExchangeRates xmlns="http://www.mnb.hu/webservices/">
+        <startDate>${toDateStr(start)}</startDate>
+        <endDate>${toDateStr(end)}</endDate>
+        <currencyNames>${curr}</currencyNames>
+      </GetExchangeRates>`;
+    } else {
+      body = `<GetCurrentExchangeRates xmlns="http://www.mnb.hu/webservices/" />`;
+    }
 
-  const response = UrlFetchApp.fetch('http://www.mnb.hu/arfolyamok.asmx', {
-    method: 'post',
-    contentType: 'text/xml; charset=utf-8',
-    headers: { SOAPAction: `http://www.mnb.hu/webservices/MNBArfolyamServiceSoap/${operation}` },
-    payload: soap,
-    muteHttpExceptions: true
-  });
+    const soap = `<?xml version="1.0" encoding="utf-8"?>
+  <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                 xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                 xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+    <soap:Body>${body}</soap:Body>
+  </soap:Envelope>`;
 
-  if (response.getResponseCode() !== 200)
-    throw new Error('HTTP ' + response.getResponseCode());
+    const response = UrlFetchApp.fetch('http://www.mnb.hu/arfolyamok.asmx', {
+      method: 'post',
+      contentType: 'text/xml; charset=utf-8',
+      headers: { SOAPAction: `http://www.mnb.hu/webservices/MNBArfolyamServiceSoap/${operation}` },
+      payload: soap,
+      muteHttpExceptions: true
+    });
 
-  const soapNs = XmlService.getNamespace('http://schemas.xmlsoap.org/soap/envelope/');
-  const mnbNs  = XmlService.getNamespace('http://www.mnb.hu/webservices/');
-  const inner  = XmlService.parse(response.getContentText()).getRootElement()
-    .getChild('Body', soapNs)
-    .getChild(operation + 'Response', mnbNs)
-    .getChild(operation + 'Result', mnbNs)
-    .getText();
+    if (response.getResponseCode() !== 200)
+      throw new Error('HTTP ' + response.getResponseCode());
 
-  const days = XmlService.parse(inner).getRootElement().getChildren('Day');
-  if (!days.length) throw new Error('No data for this date (weekend or holiday?)');
+    const soapNs = XmlService.getNamespace('http://schemas.xmlsoap.org/soap/envelope/');
+    const mnbNs  = XmlService.getNamespace('http://www.mnb.hu/webservices/');
+    const inner  = XmlService.parse(response.getContentText()).getRootElement()
+      .getChild('Body', soapNs)
+      .getChild(operation + 'Response', mnbNs)
+      .getChild(operation + 'Result', mnbNs)
+      .getText();
 
-  const rate = days[0].getChildren('Rate')
-    .find(r => r.getAttribute('curr').getValue() === curr);
-  if (!rate) throw new Error('Currency not found: ' + curr);
+    const days = XmlService.parse(inner).getRootElement().getChildren('Day');
+    if (!days.length) throw new Error('No data found');
 
-  return parseFloat(rate.getText().replace(',', '.')) / Number(rate.getAttribute('unit').getValue());
-}
+    const day  = date ? days[days.length - 1] : days[0];
+    const rate = day.getChildren('Rate')
+      .find(r => r.getAttribute('curr').getValue() === curr);
+    if (!rate) throw new Error('Currency not found: ' + curr);
 
-function toDateStr(date) {
-  const d = date instanceof Date ? date : new Date(date);
-  return Utilities.formatDate(d, 'Europe/Budapest', 'yyyy-MM-dd');
-}
+    return parseFloat(rate.getText().replace(',', '.')) / Number(rate.getAttribute('unit').getValue());
+  }
+
+  function toDateStr(date) {
+    const d = date instanceof Date ? date : new Date(date);
+    return Utilities.formatDate(d, 'Europe/Budapest', 'yyyy-MM-dd');
+  }
