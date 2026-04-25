@@ -52,7 +52,7 @@ If no rate is published for the requested date (weekend or public holiday), the 
 ## Magyar
 
 ### Mi ez?
-Az `getMNBRate` egy egyéni függvény Google Táblázathoz, amely az MNB hivatalos középárfolyamát kérdezi le közvetlenül a Magyar Nemzeti Bank rendszeréből.
+Az `getMNBRate` egy egyéni függvény Google Sheets-hez, amely az MNB hivatalos középárfolyamát kérdezi le közvetlenül a Magyar Nemzeti Bank rendszeréből.
 
 ### Telepítés
 1. Nyisd meg a táblázatot, majd kattints a **Bővítmények → Apps Script** menüpontra
@@ -75,7 +75,7 @@ Az `getMNBRate` egy egyéni függvény Google Táblázathoz, amely az MNB hivata
 ```
 ahol az `A1` cella egy dátumot tartalmaz.
 
-### Hétvégi és ünnepnapi visszaesés
+### Hétvégi és ünnepnapok kezelése
 Ha a kért napra nincs MNB árfolyam (hétvége vagy ünnepnap), a függvény automatikusan az azt megelőző 7 napon belüli legutolsó elérhető árfolyamot adja vissza. Például: 2025.12.25-re lekérdezve a 2025.12.24-i árfolyamot kapjuk.
 
 ### Támogatott devizák (példák)
